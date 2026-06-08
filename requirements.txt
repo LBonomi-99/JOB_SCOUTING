@@ -1,0 +1,10 @@
+requests>=2.31
+python-dotenv>=1.0
+# Only for SCORER_BACKEND="anthropic_api". Not needed with the default "claude_cli".
+anthropic>=0.40
+# Only for `python main.py --init` with a PDF CV (text extraction). Pure Python.
+pypdf>=4.0
+# Only for the web app `python main.py --web` (local server + report render).
+flask>=3.0
+markdown>=3.5
+# Note: profile parsing uses tomllib (stdlib Python 3.11+): no dependency.

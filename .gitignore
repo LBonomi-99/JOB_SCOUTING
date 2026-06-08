@@ -1,0 +1,25 @@
+# Secrets
+.env
+
+# Generated reports / state
+report.md
+report-*.md
+reports/
+data/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Local tooling (Claude Code settings, plans, memory)
+.claude/
+
+# CVs and any uploaded PDF (keep personal documents out of the repo)
+*.pdf
+
+# Personal / generated profiles (keep only example.toml and sample.toml)
+profiles/leonardo.toml
+profiles/profile.toml
+profiles/*-private.toml

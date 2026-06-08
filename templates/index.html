@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JobScouting</title>
+<style>
+  :root {
+    /* warm paper, ink, copper accent — OKLCH, neutrals tinted warm */
+    --paper:    oklch(0.966 0.009 78);
+    --raised:   oklch(0.992 0.006 82);
+    --sunken:   oklch(0.945 0.012 76);
+    --ink:      oklch(0.27  0.022 58);
+    --ink-soft: oklch(0.40  0.020 60);
+    --muted:    oklch(0.55  0.018 62);
+    --line:     oklch(0.885 0.013 72);
+    --line-firm:oklch(0.83  0.016 70);
+    --accent:   oklch(0.60  0.130 52);   /* copper */
+    --accent-st:oklch(0.52  0.140 48);
+    --accent-sf:oklch(0.93  0.040 68);   /* copper wash */
+    --good:     oklch(0.55  0.120 150);
+    --warn:     oklch(0.62  0.130 75);
+    --bad:      oklch(0.55  0.170 30);
+    --bad-sf:   oklch(0.95  0.035 32);
+    --log-bg:   oklch(0.215 0.014 60);
+    --log-fg:   oklch(0.86  0.018 78);
+    --radius: 14px;
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --shadow: 0 1px 2px oklch(0.27 0.02 58 / .05), 0 6px 20px oklch(0.27 0.02 58 / .06);
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    background-image: radial-gradient(oklch(0.27 0.02 58 / .025) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+  ::selection { background: var(--accent-sf); }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 44px 22px 96px; }
+
+  /* ---- header + stepper ---- */
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+  h1 {
+    font-size: 25px; margin: 0; letter-spacing: -0.5px; font-weight: 650;
+    display: flex; align-items: center; gap: 9px;
+  }
+  h1 .mark {
+    width: 12px; height: 12px; border-radius: 4px; background: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-sf); transform: rotate(45deg);
+  }
+  .badge {
+    margin-left: auto; font-size: 11px; color: var(--muted); letter-spacing: .02em;
+    border: 1px solid var(--line-firm); padding: 3px 9px; border-radius: 99px;
+    background: var(--raised);
+  }
+  .stepper {
+    display: flex; align-items: center; gap: 0; margin: 0 0 30px;
+    font-size: 12.5px; color: var(--muted);
+  }
+  .stepper .s { display: flex; align-items: center; gap: 8px; }
+  .stepper .dot {
+    width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
+    font-size: 11px; font-weight: 700; border: 1.5px solid var(--line-firm);
+    background: var(--raised); color: var(--muted);
+    transition: all .25s var(--ease);
+  }
+  .stepper .lbl { transition: color .25s var(--ease); }
+  .stepper .bar {
+    flex: 1; height: 1.5px; background: var(--line-firm); margin: 0 12px;
+    transition: background .35s var(--ease);
+  }
+  .stepper .s.active .dot {
+    border-color: var(--accent); color: var(--accent-st);
+    box-shadow: 0 0 0 4px var(--accent-sf);
+  }
+  .stepper .s.active .lbl { color: var(--ink); font-weight: 600; }
+  .stepper .s.done .dot {
+    border-color: var(--accent); background: var(--accent); color: var(--raised);
+  }
+  .stepper .s.done .lbl { color: var(--ink-soft); }
+  .stepper .s.done + .bar, .stepper .bar.fill { background: var(--accent); }
+
+  /* ---- cards ---- */
+  .card {
+    background: var(--raised); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 24px 24px 22px; margin-bottom: 16px;
+    box-shadow: var(--shadow);
+    animation: rise .4s var(--ease) both;
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+  .card > h2 {
+    font-size: 15.5px; margin: 0 0 4px; font-weight: 620; letter-spacing: -0.2px;
+  }
+  .card .hint { color: var(--muted); font-size: 12.5px; margin: 0 0 18px; }
+
+  /* ---- form controls ---- */
+  label { display: block; font-size: 12px; color: var(--ink-soft); margin: 0 0 6px;
+          font-weight: 550; letter-spacing: .01em; }
+  input[type=text], input[type=number], select, textarea {
+    width: 100%; background: var(--sunken); border: 1px solid var(--line-firm);
+    color: var(--ink); border-radius: 9px; padding: 10px 12px; font: inherit;
+    transition: border-color .15s var(--ease), box-shadow .15s var(--ease), background .15s var(--ease);
+  }
+  input::placeholder, textarea::placeholder { color: var(--muted); }
+  input:hover, select:hover, textarea:hover { border-color: var(--line-firm); background: var(--raised); }
+  input:focus, select:focus, textarea:focus {
+    outline: none; border-color: var(--accent); background: var(--raised);
+    box-shadow: 0 0 0 3px var(--accent-sf);
+  }
+  textarea { resize: vertical; line-height: 1.55; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .row3 { display: grid; grid-template-columns: 1.6fr 1fr 1fr; gap: 16px; }
+  .field { margin-bottom: 16px; }
+  .field:last-child { margin-bottom: 0; }
+  .check { display: flex; align-items: center; gap: 9px; font-size: 13.5px; color: var(--ink);
+           cursor: pointer; margin: 0; font-weight: 500; }
+  .check input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+  .check .note { color: var(--muted); font-size: 12px; font-weight: 400; }
+  .country-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 9px 16px; padding: 12px 14px; background: var(--sunken);
+    border: 1px solid var(--line-firm); border-radius: 10px;
+  }
+  .ctry { display: flex; align-items: center; gap: 9px; font-size: 13.5px;
+          color: var(--ink); font-weight: 500; cursor: pointer; margin: 0; }
+  .ctry input { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
+
+  /* ---- buttons ---- */
+  button {
+    background: var(--ink); color: var(--paper); border: 0; border-radius: 9px;
+    padding: 11px 20px; font: inherit; font-weight: 600; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 9px;
+    transition: transform .12s var(--ease), background .15s var(--ease), box-shadow .15s var(--ease);
+  }
+  button:hover { background: oklch(0.21 0.02 56); box-shadow: var(--shadow); }
+  button:active { transform: translateY(1px); }
+  button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-sf); }
+  button:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; transform: none; }
+  button.primary { background: var(--accent); }
+  button.primary:hover { background: var(--accent-st); }
+  button .arr { transition: transform .18s var(--ease); }
+  button:hover:not(:disabled) .arr { transform: translateX(3px); }
+
+  /* ---- drop zone ---- */
+  .drop {
+    border: 1.5px dashed var(--line-firm); border-radius: 11px; padding: 30px 20px;
+    text-align: center; color: var(--muted); cursor: pointer; background: var(--sunken);
+    transition: border-color .18s var(--ease), background .18s var(--ease), color .18s var(--ease);
+  }
+  .drop:hover { border-color: var(--accent); color: var(--ink-soft); }
+  .drop.hot { border-color: var(--accent); border-style: solid; background: var(--accent-sf); color: var(--ink); }
+  .drop .big { font-size: 14.5px; color: var(--ink); font-weight: 560; }
+  .drop .big u { text-decoration-color: var(--accent); text-underline-offset: 3px; }
+  .drop .fname { margin-top: 9px; font-size: 12.5px; color: var(--accent-st); font-weight: 560; min-height: 16px; }
+
+  /* ---- chips ---- */
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 9px; min-height: 4px; }
+  .chip {
+    background: var(--accent-sf); border: 1px solid transparent; border-radius: 99px;
+    padding: 4px 7px 4px 12px; font-size: 13px; color: var(--ink); font-weight: 500;
+    display: inline-flex; align-items: center; gap: 7px;
+    animation: pop .2s var(--ease) both;
+  }
+  @keyframes pop { from { opacity: 0; transform: scale(.85); } }
+  .chip x {
+    cursor: pointer; color: var(--accent-st); font-style: normal; font-size: 11px;
+    width: 17px; height: 17px; border-radius: 50%; display: grid; place-items: center;
+    transition: background .12s var(--ease), color .12s var(--ease);
+  }
+  .chip x:hover { background: var(--bad); color: var(--raised); }
+
+  /* ---- misc ---- */
+  .hidden { display: none !important; }
+  .muted { color: var(--muted); font-size: 12px; }
+  .err {
+    color: var(--bad); font-size: 13px; margin-top: 12px; min-height: 16px;
+    padding-left: 0;
+  }
+  .err:not(:empty) {
+    background: var(--bad-sf); border-radius: 8px; padding: 9px 12px; margin-top: 14px;
+  }
+  .actions { display: flex; gap: 12px; align-items: center; margin-top: 20px; flex-wrap: wrap; }
+  .actions .muted { margin: 0; }
+  .spin {
+    width: 15px; height: 15px; border: 2px solid oklch(0.27 0.02 58 / .25);
+    border-top-color: currentColor; border-radius: 50%; animation: r .7s linear infinite;
+    display: inline-block;
+  }
+  @keyframes r { to { transform: rotate(360deg); } }
+
+  details { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 16px; }
+  details summary {
+    cursor: pointer; color: var(--ink-soft); font-size: 13px; font-weight: 550;
+    list-style: none; display: flex; align-items: center; gap: 7px; user-select: none;
+  }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::before {
+    content: "›"; font-size: 16px; color: var(--accent-st);
+    transition: transform .2s var(--ease); display: inline-block;
+  }
+  details[open] summary::before { transform: rotate(90deg); }
+  details summary + * { margin-top: 16px; }
+
+  /* ---- log (the one dark block, on purpose) ---- */
+  pre#log {
+    background: var(--log-bg); border: 1px solid oklch(0.30 0.02 60); border-radius: 10px;
+    padding: 16px 18px; max-height: 340px; overflow: auto; font-size: 12.5px; line-height: 1.7;
+    color: var(--log-fg); white-space: pre-wrap; margin: 14px 0 0;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+  }
+  pre#log:empty::after { content: "in attesa…"; color: var(--muted); }
+
+  /* ---- report ---- */
+  .report { font-size: 14.5px; }
+  .report :is(h1,h2,h3) { letter-spacing: -0.3px; }
+  .report h1 { font-size: 21px; margin: 0 0 14px; }
+  .report h2 {
+    font-size: 16.5px; margin: 28px 0 12px; padding-bottom: 7px;
+    border-bottom: 1px solid var(--line);
+  }
+  .report h3 { font-size: 14.5px; margin: 20px 0 8px; }
+  .report a { color: var(--accent-st); text-underline-offset: 2px; }
+  .report code {
+    color: var(--accent-st); background: var(--accent-sf); padding: 1px 6px;
+    border-radius: 5px; font-size: 12.5px;
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  }
+  .report ul { padding-left: 20px; }
+  .report li { margin: 3px 0; }
+  .report table {
+    border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 13px;
+  }
+  .report th, .report td {
+    border: 1px solid var(--line); padding: 7px 11px; text-align: left;
+  }
+  .report th { background: var(--sunken); font-weight: 600; }
+  .report blockquote {
+    margin: 12px 0; padding: 8px 14px; background: var(--sunken);
+    border-radius: 8px; color: var(--ink-soft);
+  }
+
+  @media (max-width: 560px) {
+    .wrap { padding: 32px 16px 72px; }
+    .row, .row3 { grid-template-columns: 1fr; }
+    .stepper .lbl { display: none; }
+    .stepper .bar { margin: 0 8px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span class="mark"></span> JobScouting</h1>
+    <span class="badge">backend · {{ backend }}</span>
+  </header>
+
+  <div class="stepper" id="stepper">
+    <div class="s active" data-step="1"><span class="dot">1</span><span class="lbl">Upload</span></div>
+    <span class="bar"></span>
+    <div class="s" data-step="2"><span class="dot">2</span><span class="lbl">Confirm</span></div>
+    <span class="bar"></span>
+    <div class="s" data-step="3"><span class="dot">3</span><span class="lbl">Run</span></div>
+    <span class="bar"></span>
+    <div class="s" data-step="4"><span class="dot">✓</span><span class="lbl">Report</span></div>
+  </div>
+
+  <!-- STEP 1: upload -->
+  <div class="card" id="card-upload">
+    <h2>Upload your CV</h2>
+    <p class="hint">The model extracts name, city, role and skills from it. Everything stays local.</p>
+    <div class="field" style="max-width:240px">
+      <label for="language">Report language</label>
+      <input type="text" id="language" value="english">
+    </div>
+    <input type="file" id="file" accept=".pdf,.txt" class="hidden">
+    <div class="drop" id="drop">
+      <div class="big">Drop your CV here or <u>choose a file</u></div>
+      <div class="muted" style="margin-top:5px">PDF or TXT</div>
+      <div class="fname" id="fname"></div>
+    </div>
+    <div class="actions">
+      <button id="btn-extract" class="primary" disabled>
+        <span class="spin hidden" id="spin-extract"></span>
+        <span class="btn-label">Extract from CV</span>
+        <span class="arr">→</span>
+      </button>
+      <span class="muted" id="extract-status"></span>
+    </div>
+    <div class="err" id="err-extract"></div>
+  </div>
+
+  <!-- STEP 2: conferma -->
+  <div class="card hidden" id="card-form">
+    <h2>Confirm the profile</h2>
+    <p class="hint">Fix whatever is needed, then run. The city of residence is an estimate from the CV.</p>
+    <div class="row">
+      <div class="field"><label for="name">Full name</label><input type="text" id="name"></div>
+      <div class="field"><label for="city">City of residence</label><input type="text" id="city"></div>
+    </div>
+    <div class="row3">
+      <div class="field"><label for="language2">Report language</label><input type="text" id="language2"></div>
+      <div class="field"><label for="country">Country code</label><input type="text" id="country"></div>
+      <div class="field"><label for="distance">Local radius (km)</label><input type="number" id="distance" value="50"></div>
+    </div>
+    <div class="field" style="max-width:240px">
+      <label for="top_n">Offers in the report</label>
+      <input type="number" id="top_n" min="1" value="{{ default_top_n }}">
+    </div>
+    <div class="field">
+      <label class="check"><input type="checkbox" id="remote" checked> Also search full remote work</label>
+    </div>
+    <div class="field" id="country-box">
+      <label>Countries for remote offers</label>
+      <div class="country-grid">
+        {% for c in countries %}
+        <label class="ctry"><input type="checkbox" class="ctry-cb" value="{{ c.code }}" checked> {{ c.name }}</label>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="field">
+      <label for="kw-add">Domain keywords <span class="muted">— Adzuna query</span></label>
+      <div class="chips" id="kw-chips"></div>
+      <input type="text" id="kw-add" placeholder="add a keyword and press Enter">
+      <div class="muted" id="kw-dropped" style="margin-top:8px"></div>
+    </div>
+    <details>
+      <summary>Advanced options</summary>
+      <div class="field">
+        <label for="extra">Broader remote keywords <span class="muted">— comma-separated</span></label>
+        <textarea id="extra" rows="2"></textarea>
+      </div>
+      <div class="field">
+        <label class="check"><input type="checkbox" id="custom-weights"> Customize the weights
+          <span class="note">sum = 1.0</span></label>
+      </div>
+      <div class="row3 hidden" id="weights-box">
+        <div class="field"><label for="w-tech">tech</label><input type="number" step="0.05" id="w-tech" value="0.45"></div>
+        <div class="field"><label for="w-sal">salary_seniority</label><input type="number" step="0.05" id="w-sal" value="0.20"></div>
+        <div class="field"><label for="w-com">company</label><input type="number" step="0.05" id="w-com" value="0.15"></div>
+        <div class="field"><label for="w-loc">location</label><input type="number" step="0.05" id="w-loc" value="0.20"></div>
+      </div>
+    </details>
+    <div class="field" style="margin-top:18px">
+      <label for="profile_text">Profile description <span class="muted">— extracted from the CV, editable</span></label>
+      <textarea id="profile_text" rows="7"></textarea>
+    </div>
+    <div class="actions">
+      <button id="btn-run" class="primary">
+        <span class="spin hidden" id="spin-btn-run"></span>
+        <span class="btn-label">Run automation</span>
+        <span class="arr">→</span>
+      </button>
+      <span class="muted">Adzuna fetch + scoring, a few minutes</span>
+    </div>
+    <div class="err" id="err-run"></div>
+  </div>
+
+  <!-- STEP 3: run -->
+  <div class="card hidden" id="card-run">
+    <h2>Automation running <span class="spin hidden" id="spin-run" style="margin-left:4px"></span></h2>
+    <p class="hint">Fetching offers and scoring line by line. Live log.</p>
+    <pre id="log"></pre>
+  </div>
+
+  <!-- STEP 4: report -->
+  <div class="card hidden" id="card-report">
+    <h2>Report</h2>
+    <div class="report" id="report"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let keywords = [];
+
+// --- stepper state ---
+function setStep(active) {
+  document.querySelectorAll("#stepper .s").forEach(s => {
+    const n = +s.dataset.step;
+    s.classList.toggle("done", n < active);
+    s.classList.toggle("active", n === active);
+  });
+  document.querySelectorAll("#stepper .bar").forEach((b, i) =>
+    b.classList.toggle("fill", i + 1 < active));
+}
+
+// --- step 1: file pick + drag ---
+const drop = $("drop"), fileInput = $("file");
+drop.onclick = () => fileInput.click();
+["dragover","dragenter"].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add("hot"); }));
+["dragleave","drop"].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove("hot"); }));
+drop.addEventListener("drop", ev => { fileInput.files = ev.dataTransfer.files; onFile(); });
+fileInput.onchange = onFile;
+function onFile() {
+  const f = fileInput.files[0];
+  $("fname").textContent = f ? f.name : "";
+  $("btn-extract").disabled = !f;
+}
+
+// --- step 1 -> extract ---
+$("btn-extract").onclick = async () => {
+  const f = fileInput.files[0]; if (!f) return;
+  $("err-extract").textContent = "";
+  $("btn-extract").disabled = true; $("spin-extract").classList.remove("hidden");
+  $("btn-extract").querySelector(".btn-label").textContent = "Extracting…";
+  $("extract-status").textContent = "the model is reading the CV";
+  const fd = new FormData();
+  fd.append("cv", f); fd.append("language", $("language").value || "english");
+  try {
+    const r = await fetch("/extract", { method: "POST", body: fd });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || "error");
+    fillForm(d);
+    setStep(2);
+    $("card-form").classList.remove("hidden");
+    $("card-form").scrollIntoView({ behavior: "smooth", block: "start" });
+    $("extract-status").textContent = "done.";
+  } catch (e) {
+    $("err-extract").textContent = e.message;
+  } finally {
+    $("btn-extract").disabled = false; $("spin-extract").classList.add("hidden");
+    $("btn-extract").querySelector(".btn-label").textContent = "Extract from CV";
+  }
+};
+
+function fillForm(d) {
+  $("name").value = d.name || "";
+  $("city").value = d.city || "";
+  $("country").value = d.country || "it";
+  $("language2").value = $("language").value || "english";
+  $("profile_text").value = d.profile_text || "";
+  $("extra").value = (d.remote_extra_keywords || []).join(", ");
+  keywords = (d.keywords || []).slice();
+  renderChips();
+  $("kw-dropped").textContent = (d.dropped_keywords && d.dropped_keywords.length)
+    ? "dropped as too generic: " + d.dropped_keywords.join(", ") : "";
+}
+
+// --- keyword chips ---
+function renderChips() {
+  const c = $("kw-chips"); c.innerHTML = "";
+  keywords.forEach((k, i) => {
+    const el = document.createElement("span");
+    el.className = "chip";
+    el.innerHTML = `${k} <x data-i="${i}">✕</x>`;
+    el.querySelector("x").onclick = () => { keywords.splice(i, 1); renderChips(); };
+    c.appendChild(el);
+  });
+}
+$("kw-add").addEventListener("keydown", ev => {
+  if (ev.key === "Enter") {
+    ev.preventDefault();
+    const v = ev.target.value.trim();
+    if (v) { keywords.push(v); ev.target.value = ""; renderChips(); }
+  }
+});
+$("custom-weights").onchange = ev => $("weights-box").classList.toggle("hidden", !ev.target.checked);
+$("remote").onchange = ev => $("country-box").classList.toggle("hidden", !ev.target.checked);
+
+// --- step 2 -> run ---
+$("btn-run").onclick = async () => {
+  $("err-run").textContent = "";
+  if (!$("name").value.trim() || !$("city").value.trim()) {
+    $("err-run").textContent = "Name and city are required."; return;
+  }
+  if (!keywords.length) { $("err-run").textContent = "At least one keyword is required."; return; }
+  let weights = null;
+  if ($("custom-weights").checked) {
+    weights = { tech: +$("w-tech").value, salary_seniority: +$("w-sal").value,
+                company: +$("w-com").value, location: +$("w-loc").value };
+    const s = Object.values(weights).reduce((a, b) => a + b, 0);
+    if (Math.abs(s - 1) > 1e-6) { $("err-run").textContent = "Weights must sum to 1.0 (now " + s.toFixed(2) + ")."; return; }
+  }
+  const remote_countries = [...document.querySelectorAll(".ctry-cb:checked")].map(c => c.value);
+  if ($("remote").checked && !remote_countries.length) {
+    $("err-run").textContent = "Select at least one country for remote, or turn remote off."; return;
+  }
+  const body = {
+    name: $("name").value, city: $("city").value, country: $("country").value,
+    language: $("language2").value, distance: +$("distance").value,
+    top_n: +$("top_n").value,
+    remote: $("remote").checked, remote_countries, keywords,
+    remote_extra_keywords: $("extra").value.split(",").map(s => s.trim()).filter(Boolean),
+    profile_text: $("profile_text").value, weights,
+  };
+  $("btn-run").disabled = true;
+  $("spin-btn-run").classList.remove("hidden");
+  $("btn-run").querySelector(".btn-label").textContent = "Starting…";
+  try {
+    const r = await fetch("/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || "error");
+    startStream();
+  } catch (e) {
+    $("err-run").textContent = e.message; resetRunBtn();
+  }
+};
+function resetRunBtn() {
+  $("btn-run").disabled = false; $("spin-btn-run").classList.add("hidden");
+  $("btn-run").querySelector(".btn-label").textContent = "Run automation";
+}
+
+// --- step 3: SSE log ---
+function startStream() {
+  setStep(3);
+  $("card-run").classList.remove("hidden");
+  $("spin-run").classList.remove("hidden");
+  $("log").textContent = "";
+  $("card-run").scrollIntoView({ behavior: "smooth", block: "start" });
+  const es = new EventSource("/progress");
+  es.onmessage = ev => {
+    const line = JSON.parse(ev.data);
+    const log = $("log");
+    log.textContent += line + "\n";
+    log.scrollTop = log.scrollHeight;
+  };
+  es.addEventListener("done", async ev => {
+    es.close();
+    $("spin-run").classList.add("hidden");
+    resetRunBtn();
+    const info = JSON.parse(ev.data);
+    if (info.status === "error") {
+      $("err-run").textContent = info.error || "scoring error";
+      setStep(3);
+      return;
+    }
+    const r = await fetch("/report");
+    const d = await r.json();
+    $("report").innerHTML = d.html;
+    setStep(4);
+    $("card-report").classList.remove("hidden");
+    $("card-report").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  es.onerror = () => { es.close(); $("spin-run").classList.add("hidden"); resetRunBtn(); };
+}
+
+setStep(1);
+</script>
+</body>
+</html>

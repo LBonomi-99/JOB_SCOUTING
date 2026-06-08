@@ -1,0 +1,105 @@
+# Sample profile for JobScouting (fictional persona).
+#
+# This file is committed as a working, ready-to-run example and is also used as
+# config.DEFAULT_PROFILE. Copy it to profiles/<yourname>.toml and edit, or run
+# `python main.py --init` to generate your own from a CV.
+#
+# TOML note: top-level keys (profile_text, scoring_rubric, keywords, ...) MUST
+# come BEFORE any [table]. Tables ([meta], [weights], [[sources]]) go last.
+
+# Free-form description of the candidate: role, experience, skills, domain,
+# location and preferences. The richer and more specific, the better the scoring.
+profile_text = """
+Candidate profile: Jordan Avery, a mid-level Data Engineer (fictional sample).
+
+Current role: Data Engineer at a mid-size SaaS company since 2021, hybrid.
+Skills: Python, SQL, dbt, Airflow, Spark, AWS (S3, Glue, Redshift), data
+modeling and ETL/ELT pipelines.
+Experience: about 4 years, mid level.
+Education: BSc in Computer Science.
+Languages: English (native), German (B1).
+
+Location and preferences:
+- Lives in Berlin.
+- Open to full remote across the EU, or hybrid roles within commuting distance.
+- Personal red flags: pure on-call ops roles, no clear data stack, staffing
+  agencies with vague descriptions.
+"""
+
+# Instructions to the model on how to assign each sub-score (0-100).
+# Do NOT put the weight numbers here: they live in [weights].
+scoring_rubric = """
+Score every job offer with FOUR sub-scores from 0 to 100. Do NOT compute the
+total.
+
+1) tech - technical fit with the candidate's domain and stack. High when it
+   matches data engineering, low when generic or off-topic.
+2) salary_seniority - consistency with the candidate's experience level.
+3) company - quality of company/sector relative to the candidate's interests.
+4) location - suitability of the location/work mode given the preferences.
+
+Red flags to report when present (list, may be empty):
+- domain mismatch, seniority far too high, undesired on-site, vague ad.
+"""
+
+# Domain keywords: combined into a broad OR in the Adzuna query.
+keywords = [
+    "data engineer",
+    "data platform",
+    "dbt",
+    "airflow",
+    "etl pipeline",
+    "analytics engineer",
+]
+
+# Broader extra keywords, used only on sources with extra_keywords = true.
+remote_extra_keywords = [
+    "data engineering",
+    "big data",
+]
+
+# Text forced as AND on remote sources (e.g. "remote"). Remove to disable.
+remote_query_what = "remote"
+
+[meta]
+name = "Jordan Avery"
+report_language = "english"   # language of motivation/red flags/gap in the report
+report_top_n = 15             # how many offers to show in the report
+
+# Weights of the 4 factors: MUST sum to 1.0.
+[weights]
+tech = 0.45
+salary_seniority = 0.20
+company = 0.15
+location = 0.20
+
+# --- Adzuna sources ---
+# Adzuna country codes: at au be br ca ch de es fr gb in it mx nl nz pl sg us za
+# where/distance: geographic anchor (omit for a nationwide search).
+# remote_filter = true: keep only ads with a remote term (config.REMOTE_TERMS).
+# extra_keywords = true: adds remote_extra_keywords to the OR query.
+
+[[sources]]
+name = "near_home"
+country = "de"
+where = "Berlin"
+distance = 50
+remote_filter = false
+
+[[sources]]
+name = "remote_de"
+country = "de"
+remote_filter = true
+extra_keywords = true
+
+[[sources]]
+name = "remote_gb"
+country = "gb"
+remote_filter = true
+extra_keywords = true
+
+[[sources]]
+name = "remote_nl"
+country = "nl"
+remote_filter = true
+extra_keywords = true

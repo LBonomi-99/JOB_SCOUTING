@@ -1,0 +1,92 @@
+# JobScouting profile template. Copy to profiles/<yourname>.toml and fill in.
+# Run with:  python main.py --profile profiles/<yourname>.toml
+#
+# Everything in here is yours and customizable: profile, rubric, weights,
+# keywords, sources. The code does not need to be touched.
+#
+# TOML note: top-level keys (profile_text, scoring_rubric, keywords, ...) MUST
+# come BEFORE any [table]. Tables ([meta], [weights], [[sources]]) go last.
+
+# Free-form description of yourself: role, experience, skills, domain, location
+# and preferences (remote/on-site, acceptable cities, personal red flags). The
+# richer and more specific, the better the scoring.
+profile_text = """
+Candidate profile: <who you are>.
+
+Current role: <role, company, since when, work mode>.
+Skills: <main stack/domain>.
+Experience: <years and level: junior/mid/senior>.
+Education: <degrees>.
+Languages: <languages>.
+
+Location and preferences:
+- Lives in <city>.
+- Ideal: <full remote / on-site nearby / acceptable cities>.
+- Personal red flags: <what you do NOT want>.
+"""
+
+# Instructions to the model on how to assign each sub-score (0-100).
+# Do NOT put the weight numbers here: they live in [weights].
+scoring_rubric = """
+Score every offer with FOUR sub-scores 0-100. Do NOT compute the total.
+
+1) tech - technical fit with the candidate's domain. High when it hits the
+   domain, low when generic or off-topic.
+2) salary_seniority - consistency with the candidate's experience level.
+3) company - quality of company/sector relative to the interests.
+4) location - suitability of the location/work mode given the preferences.
+
+Red flags to report when present (list, may be empty):
+- <e.g. domain mismatch, seniority too high, undesired on-site, vague ad>.
+"""
+
+# Domain keywords: combined into a broad OR in the Adzuna query.
+keywords = [
+    "<keyword 1>",
+    "<keyword 2>",
+]
+
+# Extra (broader) keywords, used only on sources with extra_keywords = true.
+remote_extra_keywords = [
+    "<broad keyword 1>",
+]
+
+# Text forced as AND on remote sources (e.g. "remote"). Remove to disable.
+remote_query_what = "remote"
+
+[meta]
+name = "First Last"
+report_language = "english"   # language of motivation/red flags/gap in the report
+report_top_n = 15             # how many offers to show in the report
+
+# Weights of the 4 factors: MUST sum to 1.0.
+[weights]
+tech = 0.45
+salary_seniority = 0.20
+company = 0.15
+location = 0.20
+
+# --- Adzuna sources ---
+# Adzuna country codes: at au be br ca ch de es fr gb in it mx nl nz pl sg us za
+# where/distance: geographic anchor (omit for a nationwide search).
+# remote_filter = true: keep only ads with a remote term (config.REMOTE_TERMS).
+# extra_keywords = true: adds remote_extra_keywords to the OR query.
+
+[[sources]]
+name = "near_home"
+country = "gb"
+where = "<your city>"
+distance = 50
+remote_filter = false
+
+[[sources]]
+name = "remote_gb"
+country = "gb"
+remote_filter = true
+extra_keywords = true
+
+[[sources]]
+name = "remote_de"
+country = "de"
+remote_filter = true
+extra_keywords = true
