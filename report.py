@@ -27,6 +27,13 @@ def _format_list(items: list, empty: str) -> str:
     return f"  - {empty}"
 
 
+def _format_breakdown(sub: dict, weights: dict) -> str:
+    """Per-factor breakdown line, driven by the profile's active factors."""
+    return " · ".join(
+        f"{config.factor_label(k)} {sub.get(k, 0)} ({_pct(k, weights)})"
+        for k in weights)
+
+
 def _format_offer(rank: int, offer: dict, weights: dict) -> str:
     sub = offer.get("sub_scores", {})
     badge = "🆕 " if offer.get("is_new") else ""
@@ -37,10 +44,7 @@ def _format_offer(rank: int, offer: dict, weights: dict) -> str:
         f"- **Location:** {offer['location'] or 'n/a'} "
         f"(country: {offer['country']}, source: {offer['source']})\n"
         f"- **Salary:** {_format_salary(offer)}\n"
-        f"- **Breakdown:** tech {sub.get('tech', 0)} ({_pct('tech', weights)}) · "
-        f"salary/seniority {sub.get('salary_seniority', 0)} ({_pct('salary_seniority', weights)}) · "
-        f"company {sub.get('company', 0)} ({_pct('company', weights)}) · "
-        f"location {sub.get('location', 0)} ({_pct('location', weights)})\n"
+        f"- **Breakdown:** {_format_breakdown(sub, weights)}\n"
         f"- **Reasoning:** {offer.get('motivation', '')}\n"
         f"- **Red flags:**\n{_format_list(offer.get('red_flags', []), 'none')}\n"
         f"- **To close the gap:**\n{_format_list(offer.get('gap', []), 'no relevant gap')}\n"

@@ -26,21 +26,9 @@ Location and preferences:
   agencies with vague descriptions.
 """
 
-# Instructions to the model on how to assign each sub-score (0-100).
-# Do NOT put the weight numbers here: they live in [weights].
-scoring_rubric = """
-Score every job offer with FOUR sub-scores from 0 to 100. Do NOT compute the
-total.
-
-1) tech - technical fit with the candidate's domain and stack. High when it
-   matches data engineering, low when generic or off-topic.
-2) salary_seniority - consistency with the candidate's experience level.
-3) company - quality of company/sector relative to the candidate's interests.
-4) location - suitability of the location/work mode given the preferences.
-
-Red flags to report when present (list, may be empty):
-- domain mismatch, seniority far too high, undesired on-site, vague ad.
-"""
+# scoring_rubric is intentionally omitted: it is auto-built from the active
+# factors in [weights] (see config.FACTORS). Set it here only if you want to
+# fully override the model instructions, and keep it in sync with your factors.
 
 # Domain keywords: combined into a broad OR in the Adzuna query.
 keywords = [
@@ -66,9 +54,11 @@ name = "Jordan Avery"
 report_language = "english"   # language of motivation/red flags/gap in the report
 report_top_n = 15             # how many offers to show in the report
 
-# Weights of the 4 factors: MUST sum to 1.0.
+# Scoring factors and their relative weights (auto-normalized to 1.0).
+# Available factors: see config.FACTORS. Pick the ones that fit your job search;
+# 4-6 active factors work best. Add e.g. growth = 0.10 to include another factor.
 [weights]
-tech = 0.45
+skill_fit = 0.45
 salary_seniority = 0.20
 company = 0.15
 location = 0.20

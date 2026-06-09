@@ -126,6 +126,13 @@
   .ctry { display: flex; align-items: center; gap: 9px; font-size: 13.5px;
           color: var(--ink); font-weight: 500; cursor: pointer; margin: 0; }
   .ctry input { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
+  .factor-grid { display: flex; flex-direction: column; gap: 8px; }
+  .factor-row {
+    display: grid; grid-template-columns: 1fr 90px 48px; align-items: center; gap: 12px;
+  }
+  .factor-row .fac-w { padding: 7px 9px; }
+  .factor-row .fac-pct { font-size: 12px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+  .factor-row .check { font-weight: 500; }
 
   /* ---- buttons ---- */
   button {
@@ -335,14 +342,20 @@
         <textarea id="extra" rows="2"></textarea>
       </div>
       <div class="field">
-        <label class="check"><input type="checkbox" id="custom-weights"> Customize the weights
-          <span class="note">sum = 1.0</span></label>
+        <label class="check"><input type="checkbox" id="custom-weights"> Customize scoring factors
+          <span class="note">relative weights, auto-normalized to 100%</span></label>
       </div>
-      <div class="row3 hidden" id="weights-box">
-        <div class="field"><label for="w-tech">tech</label><input type="number" step="0.05" id="w-tech" value="0.45"></div>
-        <div class="field"><label for="w-sal">salary_seniority</label><input type="number" step="0.05" id="w-sal" value="0.20"></div>
-        <div class="field"><label for="w-com">company</label><input type="number" step="0.05" id="w-com" value="0.15"></div>
-        <div class="field"><label for="w-loc">location</label><input type="number" step="0.05" id="w-loc" value="0.20"></div>
+      <div class="hidden" id="weights-box">
+        <p class="muted" style="margin:0 0 10px">Pick the factors and their relative weights (any numbers). 4-6 active factors work best (max {{ max_factors }}).</p>
+        <div class="factor-grid">
+          {% for f in factors %}
+          <div class="factor-row">
+            <label class="check"><input type="checkbox" class="fac-cb" value="{{ f.key }}"{% if f.core %} checked{% endif %}> {{ f.label }}</label>
+            <input type="number" class="fac-w" data-key="{{ f.key }}" min="0" step="0.05" value="{{ f.weight }}"{% if not f.core %} disabled{% endif %}>
+            <span class="fac-pct" data-key="{{ f.key }}"></span>
+          </div>
+          {% endfor %}
+        </div>
       </div>
     </details>
     <div class="field" style="margin-top:18px">
@@ -462,6 +475,34 @@ $("kw-add").addEventListener("keydown", ev => {
 $("custom-weights").onchange = ev => $("weights-box").classList.toggle("hidden", !ev.target.checked);
 $("remote").onchange = ev => $("country-box").classList.toggle("hidden", !ev.target.checked);
 
+// --- scoring factors: enable/disable + live normalized % ---
+function activeFactorWeights() {
+  const w = {};
+  document.querySelectorAll(".fac-cb:checked").forEach(cb => {
+    const v = +document.querySelector(`.fac-w[data-key="${cb.value}"]`).value;
+    if (v > 0) w[cb.value] = v;
+  });
+  return w;
+}
+function refreshFactorPcts() {
+  const w = activeFactorWeights();
+  const sum = Object.values(w).reduce((a, b) => a + b, 0);
+  document.querySelectorAll(".fac-pct").forEach(el => {
+    const k = el.dataset.key;
+    el.textContent = (w[k] && sum) ? Math.round(w[k] / sum * 100) + "%" : "";
+  });
+}
+document.querySelectorAll(".fac-cb").forEach(cb => cb.addEventListener("change", () => {
+  const inp = document.querySelector(`.fac-w[data-key="${cb.value}"]`);
+  inp.disabled = !cb.checked;
+  // activating a factor with no weight yet: give it a sensible default so the
+  // checkbox alone is enough (otherwise it would stay 0 and be dropped).
+  if (cb.checked && !(+inp.value > 0)) inp.value = "0.2";
+  refreshFactorPcts();
+}));
+document.querySelectorAll(".fac-w").forEach(inp => inp.addEventListener("input", refreshFactorPcts));
+refreshFactorPcts();
+
 // --- step 2 -> run ---
 $("btn-run").onclick = async () => {
   $("err-run").textContent = "";
@@ -471,10 +512,10 @@ $("btn-run").onclick = async () => {
   if (!keywords.length) { $("err-run").textContent = "At least one keyword is required."; return; }
   let weights = null;
   if ($("custom-weights").checked) {
-    weights = { tech: +$("w-tech").value, salary_seniority: +$("w-sal").value,
-                company: +$("w-com").value, location: +$("w-loc").value };
-    const s = Object.values(weights).reduce((a, b) => a + b, 0);
-    if (Math.abs(s - 1) > 1e-6) { $("err-run").textContent = "Weights must sum to 1.0 (now " + s.toFixed(2) + ")."; return; }
+    weights = activeFactorWeights();
+    if (!Object.keys(weights).length) {
+      $("err-run").textContent = "Select at least one scoring factor with weight > 0."; return;
+    }
   }
   const remote_countries = [...document.querySelectorAll(".ctry-cb:checked")].map(c => c.value);
   if ($("remote").checked && !remote_countries.length) {

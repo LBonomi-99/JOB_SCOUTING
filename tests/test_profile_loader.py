@@ -21,7 +21,7 @@ remote_query_what = "remote"
 [meta]
 name = "Test User"
 [weights]
-tech = 0.45
+skill_fit = 0.45
 salary_seniority = 0.20
 company = 0.15
 location = 0.20
@@ -49,6 +49,7 @@ def _write(text: str) -> str:
 def test_load_valid():
     p = profile_loader.load_profile(_write(_VALID))
     assert p.name == "Test User"
+    assert "skill_fit" in p.WEIGHTS
     assert abs(sum(p.WEIGHTS.values()) - 1.0) < 1e-9
     assert p.KEYWORDS == ["alpha", "beta"]
     assert len(p.SOURCES) == 2
@@ -69,13 +70,52 @@ def test_source_resolution():
     assert loc["pages"] == config.MAX_PAGES_DEFAULT
 
 
-def test_weights_must_sum_to_one():
-    bad = _VALID.replace("location = 0.20", "location = 0.50")
+def test_weights_autonormalized():
+    # relative weights that do not sum to 1.0 -> normalized.
+    raw = _VALID.replace(
+        "skill_fit = 0.45\nsalary_seniority = 0.20\ncompany = 0.15\nlocation = 0.20",
+        "skill_fit = 2\nlocation = 2")
+    p = profile_loader.load_profile(_write(raw))
+    assert abs(sum(p.WEIGHTS.values()) - 1.0) < 1e-9
+    assert abs(p.WEIGHTS["skill_fit"] - 0.5) < 1e-9
+    assert abs(p.WEIGHTS["location"] - 0.5) < 1e-9
+
+
+def test_alias_tech_to_skill_fit():
+    # old TOML using 'tech' still loads, mapped to 'skill_fit'.
+    raw = _VALID.replace("skill_fit = 0.45", "tech = 0.45")
+    p = profile_loader.load_profile(_write(raw))
+    assert "skill_fit" in p.WEIGHTS
+    assert "tech" not in p.WEIGHTS
+
+
+def test_zero_weight_factor_dropped():
+    # a factor explicitly set to 0 is not active (dropped, not kept at 0%).
+    raw = _VALID.replace("company = 0.15", "company = 0")
+    p = profile_loader.load_profile(_write(raw))
+    assert "company" not in p.WEIGHTS
+    assert abs(sum(p.WEIGHTS.values()) - 1.0) < 1e-9
+
+
+def test_invalid_factor_rejected():
+    raw = _VALID.replace("skill_fit = 0.45", "banana = 0.45")
     try:
-        profile_loader.load_profile(_write(bad))
+        profile_loader.load_profile(_write(raw))
     except profile_loader.ProfileError:
         return
-    raise AssertionError("should have rejected weights not summing to 1.0")
+    raise AssertionError("should have rejected an unknown factor key")
+
+
+def test_custom_factors_and_rubric():
+    # a non-tech profile with optional factors; rubric auto-built from them.
+    raw = _VALID.replace(
+        'scoring_rubric = "test rubric"\n', "").replace(
+        "skill_fit = 0.45\nsalary_seniority = 0.20\ncompany = 0.15\nlocation = 0.20",
+        "skill_fit = 0.5\nmission = 0.3\nwork_life = 0.2")
+    p = profile_loader.load_profile(_write(raw))
+    assert set(p.WEIGHTS) == {"skill_fit", "mission", "work_life"}
+    assert "mission" in p.SCORING_RUBRIC
+    assert "work_life" in p.SCORING_RUBRIC
 
 
 def test_no_sources_raises():

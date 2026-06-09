@@ -7,17 +7,54 @@ anyone creates their own profiles/<name>.toml without touching the code.
 TOML is read with tomllib (stdlib Python 3.11+): no new dependency.
 """
 
+import sys
 import tomllib
 from dataclasses import dataclass, field
 
 import config
 
-# Expected weight keys (must match the factors used by the scorer).
-REQUIRED_WEIGHT_KEYS = {"tech", "salary_seniority", "company", "location"}
-
 
 class ProfileError(ValueError):
     """Profile missing, malformed or invalid."""
+
+
+def _resolve_weights(raw) -> dict:
+    """Validates and normalizes the [weights] of a profile.
+
+    - None -> the core default factors.
+    - Applies config.FACTOR_ALIASES (e.g. tech -> skill_fit).
+    - Keys must be in the factor catalog, values must be non-negative.
+    - Zero-weight factors are dropped (a factor with no weight is not active).
+    - Auto-normalizes to sum 1.0 (the user gives relative weights).
+    """
+    if raw is None:
+        return config.default_weights()
+    if not isinstance(raw, dict) or not raw:
+        raise ProfileError("[weights] must be a non-empty table")
+    weights = {}
+    for key, val in raw.items():
+        k = config.FACTOR_ALIASES.get(key, key)
+        if k not in config.FACTORS:
+            raise ProfileError(
+                f"unknown factor '{key}' in [weights]; valid factors: "
+                f"{sorted(config.FACTORS)}")
+        try:
+            v = float(val)
+        except (TypeError, ValueError):
+            raise ProfileError(f"weight for '{key}' must be a number, not {val!r}")
+        if v < 0:
+            raise ProfileError(f"weight for '{key}' must be >= 0")
+        if v == 0:
+            continue  # zero weight = factor not active: skip it
+        weights[k] = weights.get(k, 0.0) + v
+    total = sum(weights.values())
+    if total <= 0:
+        raise ProfileError("at least one factor must have a weight > 0")
+    if len(weights) > config.MAX_RECOMMENDED_FACTORS:
+        print(f"[profile] warning: {len(weights)} active factors "
+              f"(> {config.MAX_RECOMMENDED_FACTORS} recommended); the score may "
+              f"be noisier and slower.", file=sys.stderr)
+    return {k: v / total for k, v in weights.items()}
 
 
 @dataclass
@@ -82,18 +119,11 @@ def load_profile(path: str) -> Profile:
     profile_text = data.get("profile_text")
     if not profile_text:
         raise ProfileError("missing 'profile_text' in the profile")
-    # scoring_rubric and weights are optional: fall back to config defaults.
-    rubric = data.get("scoring_rubric") or config.DEFAULT_RUBRIC
 
-    weights = data.get("weights")
-    if weights is None:
-        weights = dict(config.DEFAULT_WEIGHTS)
-    if not isinstance(weights, dict) or set(weights) != REQUIRED_WEIGHT_KEYS:
-        raise ProfileError(
-            f"[weights] must have exactly the keys {sorted(REQUIRED_WEIGHT_KEYS)}")
-    wsum = sum(float(v) for v in weights.values())
-    if abs(wsum - 1.0) > 1e-9:
-        raise ProfileError(f"weights must sum to 1.0 (current sum: {wsum})")
+    # weights and scoring_rubric are optional: fall back to config defaults.
+    weights = _resolve_weights(data.get("weights"))
+    # rubric: explicit in the TOML wins; otherwise built from the active factors.
+    rubric = data.get("scoring_rubric") or config.build_rubric(list(weights))
 
     keywords = data.get("keywords")
     if not keywords:

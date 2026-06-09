@@ -97,9 +97,14 @@ def _run_job(profile, path: str) -> None:
 def index():
     countries = [{"code": c, "name": config.country_name(c)}
                  for c in config.REMOTE_COUNTRIES]
+    factors = [{"key": k, "label": f["label"],
+                "weight": f["weight"], "core": k in config.DEFAULT_FACTORS}
+               for k, f in config.FACTORS.items()]
     return render_template("index.html",
                            backend=config.SCORER_BACKEND,
                            countries=countries,
+                           factors=factors,
+                           max_factors=config.MAX_RECOMMENDED_FACTORS,
                            default_top_n=config.DEFAULT_TOP_N)
 
 
@@ -173,7 +178,19 @@ def run():
         if not keywords:
             return jsonify(error="At least one keyword is required."), 400
 
-        weights = d.get("weights") or None  # dict {tech,...} or None
+        # weights: {factor_key: relative value} on the active factors. Kept raw
+        # here (positive floats only); the loader validates keys against the
+        # catalog and auto-normalizes to 1.0.
+        raw_w = d.get("weights") or {}
+        weights = {}
+        for k, v in raw_w.items():
+            try:
+                fv = float(v)
+            except (TypeError, ValueError):
+                continue
+            if fv > 0:
+                weights[k] = fv
+        weights = weights or None
 
         remote_desc = ("also looking for full remote work (EU)" if remote
                        else "prefers on-site or hybrid near home")

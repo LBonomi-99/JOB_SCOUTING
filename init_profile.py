@@ -25,8 +25,6 @@ import config
 import llm
 import profile_loader
 
-_WEIGHT_KEYS = ("tech", "salary_seniority", "company", "location")
-
 
 # --------------------------------------------------------------------------- #
 # Input helpers
@@ -121,15 +119,46 @@ def _ask_countries() -> list:
     return chosen
 
 
-def _ask_weights() -> dict:
-    """Advanced mode: asks the 4 weights and validates the sum to 1.0."""
-    while True:
-        w = {k: _ask_float(f"  weight {k}", config.DEFAULT_WEIGHTS[k])
-             for k in _WEIGHT_KEYS}
-        s = sum(w.values())
-        if abs(s - 1.0) < 1e-9:
-            return w
-        print(f"  current sum = {s:.3f}: weights must sum to 1.0. Try again.")
+def _ask_factors() -> dict:
+    """Advanced mode: pick which scoring factors to use + their relative weights.
+
+    Weights are relative (any numbers) and auto-normalized to sum 1.0. Returns a
+    {factor_key: normalized_weight} dict. ENTER on the factor prompt = the core
+    defaults.
+    """
+    keys = list(config.FACTORS)
+    print("  Scoring factors (ENTER = the 4 core defaults):")
+    for i, k in enumerate(keys, 1):
+        core = " [core]" if k in config.DEFAULT_FACTORS else ""
+        print(f"    {i}. {config.factor_label(k)} ({k}){core}")
+    print(f"  Tip: 4-6 active factors work best "
+          f"(max {config.MAX_RECOMMENDED_FACTORS} recommended).")
+    raw = _input("  Choose factors (e.g. 1,4,skill_fit) [core]: ")
+    if not raw:
+        chosen = list(config.DEFAULT_FACTORS)
+    else:
+        chosen = []
+        for tok in raw.replace(";", ",").split(","):
+            t = tok.strip().lower()
+            if not t:
+                continue
+            if t.isdigit() and 1 <= int(t) <= len(keys):
+                k = keys[int(t) - 1]
+            elif t in config.FACTORS:
+                k = t
+            else:
+                k = config.FACTOR_ALIASES.get(t)
+            if k and k not in chosen:
+                chosen.append(k)
+        if not chosen:
+            print("  (no valid factor recognized: using core)")
+            chosen = list(config.DEFAULT_FACTORS)
+
+    print("  Relative weights (any numbers, auto-normalized to 100%):")
+    weights = {k: _ask_float(f"  weight {config.factor_label(k)}",
+                             config.FACTORS[k]["weight"] or 1.0) for k in chosen}
+    total = sum(weights.values()) or 1.0
+    return {k: round(v / total, 4) for k, v in weights.items()}
 
 
 # --------------------------------------------------------------------------- #
@@ -361,7 +390,7 @@ def _render_toml(*, name, language, city, country, distance, remote,
 
     if weights is not None:
         out += ["", "[weights]"]
-        out += [f"{k} = {weights[k]}" for k in _WEIGHT_KEYS]
+        out += [f"{k} = {weights[k]}" for k in weights]
 
     out += ["", "# --- Adzuna sources ---", "[[sources]]",
             'name = "near_home"', f"country = {_toml_str(country)}",
@@ -428,8 +457,8 @@ def run_init(launch_after: bool = True, cv_path: str = None,
     if remote:
         remote_countries = _ask_countries()
     weights = None
-    if _ask_yesno("Customize the 4 factor weights? (advanced)", False):
-        weights = _ask_weights()
+    if _ask_yesno("Customize the scoring factors and weights? (advanced)", False):
+        weights = _ask_factors()
 
     # 4) Location/remote preferences: added to the profile deterministically.
     remote_desc = ("also looking for full remote work (EU)" if remote

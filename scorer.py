@@ -18,7 +18,13 @@ import llm
 
 
 def _build_system_prompt(profile) -> str:
-    """Builds the system prompt (profile + rubric + JSON schema)."""
+    """Builds the system prompt (profile + rubric + JSON schema).
+
+    The sub_scores schema is generated from the profile's active factors, so the
+    prompt matches whatever factor set the profile selected.
+    """
+    sub_scores = ",\n".join(
+        f'    "{k}": <integer 0-100>' for k in profile.WEIGHTS)
     return f"""\
 You are an assistant that evaluates job offers for a specific candidate.
 ALWAYS reply ONLY with a valid JSON array, with no text before or after, no
@@ -33,10 +39,7 @@ For each offer you are given, produce a JSON object with these fields:
 {{
   "id": "<offer id, identical to the one received>",
   "sub_scores": {{
-    "tech": <integer 0-100>,
-    "salary_seniority": <integer 0-100>,
-    "company": <integer 0-100>,
-    "location": <integer 0-100>
+{sub_scores}
   }},
   "motivation": "<one sentence explaining the judgment>",
   "red_flags": ["<reason NOT to apply>", "..."],

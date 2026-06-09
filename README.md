@@ -13,8 +13,10 @@ themselves without touching the code. You can create the profile from your CV
 with a guided wizard or a local web app, no hand-written TOML required.
 
 ## Highlights
-- **Deterministic hybrid scoring**: the LLM gives 4 sub-scores 0-100, Python
-  computes the weighted total, explainable and repeatable.
+- **Deterministic hybrid scoring**: the LLM gives a sub-score 0-100 per factor,
+  Python computes the weighted total, explainable and repeatable.
+- **Domain-agnostic factors**: a catalog of scoring factors you pick from (not
+  just tech), each weighted. Works for any profession.
 - **Free LLM**: the `claude_cli` backend uses your subscription (no tokens).
 - **Generic**: one TOML profile per person. No scraping, only the Adzuna API.
 - **Two ways in**: a local **web app** (default) or a **terminal** wizard.
@@ -60,7 +62,7 @@ python main.py                    # or: python main.py --web
 It opens `http://127.0.0.1:5000`: you upload the **CV** (PDF/TXT), the model
 extracts the profile, you **confirm** the fields (name, city, keywords as chips,
 **how many offers** in the report, **which countries** for remote as checkboxes
-with full names, advanced weights), you **run** the automation and see the
+with full names, scoring factors and weights), you **run** the automation and see the
 **live progress** (SSE) and finally the rendered **report**. It writes the same
 `profiles/profile.toml` + `report.md`. `127.0.0.1` only, single-user.
 
@@ -72,7 +74,7 @@ python main.py --init
 First a **popup** lets you choose the **CV PDF**: the model extracts name, city,
 role, skills, seniority and keywords. Then the wizard asks **only what is
 missing** (report language, city confirmation, local radius, how many offers in
-the report, remote yes/no and which countries, advanced weights). You confirm
+the report, remote yes/no and which countries, scoring factors and weights). You confirm
 the keywords, the profile is written, and you can launch scoring right away.
 - To **skip the popup** pass the CV from the command line (PDF or TXT):
   ```bash
@@ -111,11 +113,38 @@ An alternative to the wizard, for full control:
   `MAX_DAYS_OLD`, `REMOTE_TERMS`, history retention, paths. Profile defaults
   (`DEFAULT_RUBRIC`, `DEFAULT_WEIGHTS`, `DEFAULT_TOP_N`), the `GENERIC_KEYWORDS`
   stoplist used by `--init`, and `REMOTE_COUNTRIES` / `COUNTRY_NAMES`.
-- **Per-user** (`profiles/*.toml`): profile, rubric, `[weights]` (tech 45% ·
-  salary/seniority 20% · company 15% · location 20% by default), keywords,
-  Adzuna sources. The rubric does NOT repeat the weight numbers.
-  `[meta].report_top_n` (optional, default `config.DEFAULT_TOP_N` = 15) sets how
-  many offers to show in the report.
+- **Per-user** (`profiles/*.toml`): profile, rubric, `[weights]` (the active
+  scoring factors, see below), keywords, Adzuna sources. The rubric does NOT
+  repeat the weight numbers. `[meta].report_top_n` (optional, default
+  `config.DEFAULT_TOP_N` = 15) sets how many offers to show in the report.
+
+## Scoring factors
+Each offer is scored on a set of **factors** chosen from a catalog
+(`config.FACTORS`). The LLM gives 0-100 per factor; Python applies the weights.
+
+- **Core** (active by default): `skill_fit`, `salary_seniority`, `company`,
+  `location`.
+- **Optional** (add them in `[weights]`): `culture_values`, `growth`,
+  `work_life`, `contract`, `industry`, `mission`, `sustainability`, `benefits`,
+  `stability`.
+- **Weights are relative**: any positive numbers, **auto-normalized to 1.0** at
+  load. No need to make them sum to 1.
+- **Sweet spot: 4-6 active factors** per profile (max 8 recommended). Beyond that
+  the weights dilute, the model calibrates each factor worse, and you pay more
+  output tokens/latency for little extra signal. The loader warns above 8.
+- The factor `tech` from older profiles is still accepted (aliased to
+  `skill_fit`).
+
+Example `[weights]` for a non-tech search:
+```toml
+[weights]
+skill_fit = 0.4
+mission = 0.3
+work_life = 0.2
+location = 0.1
+```
+The web app and the `--init` wizard let you pick factors and see the normalized
+percentages live; the rubric sent to the model is built from the active factors.
 
 ## Structure
 | File | Role |
